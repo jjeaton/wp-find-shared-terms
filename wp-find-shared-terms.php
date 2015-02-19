@@ -88,9 +88,9 @@ function wpfst_show_terms_page() {
 
 		$output .= sprintf( _n( $single, $plural, $shared_terms, 'wp-find-shared-terms' ), $shared_terms );
 		$output .= sprintf( __( "If you are running any plugins or themes that store term IDs, you may be affected by <a href=\"%s\">shared term splitting</a> in WordPress 4.2+.", 'wp-find-shared-terms' ), 'https://make.wordpress.org/core/2015/02/16/taxonomy-term-splitting-in-4-2-a-developer-guide/' );
-		
-		$output .= '</p>'; 
-		
+
+		$output .= '</p>';
+
 
 		// Get shared terms, names taxonomies and the count of posts that have that term
 		$sql = "SELECT tt1.term_taxonomy_id, tt1.term_id, t.name, tt1.taxonomy, tt1.count FROM wp_term_taxonomy tt1
@@ -122,11 +122,14 @@ function wpfst_show_terms_page() {
 			} else {
 				$taxonomy_name = $shared_term->taxonomy;
 			}
+
+			// get the term edit link
+			$edit_link  = get_edit_term_link( $shared_term->term_taxonomy_id, $shared_term->taxonomy );
 			?>
 			<tr>
 				<td><?php echo esc_html( $shared_term->term_taxonomy_id ); ?></td>
 				<td><?php echo esc_html( $shared_term->term_id ); ?></td>
-				<td><?php echo esc_html( $shared_term->name ); ?></td>
+				<td><a href="<?php echo esc_url( $edit_link ); ?>" title="<?php esc_html_e( 'Edit Term', 'wp-find-shared-terms' ); ?>"><?php echo esc_html( $shared_term->name ); ?></a></td>
 				<td><?php echo '<abbr title="' . esc_attr( $shared_term->taxonomy ) . '">' . esc_html( $taxonomy_name ) . '</abbr>'; ?></td>
 				<td><?php echo esc_html( $shared_term->count ); ?></td>
 			</tr>
