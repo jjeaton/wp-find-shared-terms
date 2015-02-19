@@ -74,13 +74,23 @@ function wpfst_show_terms_page() {
 
 		// If no shared terms, show a message that you are safe from the horror of shared term splitting
 		if ( 0 === (int) $count_of_shared_terms ) {
-			echo '<p>' . __( "You have no shared terms, if you're already on WordPress 4.1 you shouldn't have any issues due to shared term splitting.", 'wp-find-shared-terms' ) . '</p>';
+			echo '<p>' . __( "You have no shared terms. If you're already on WordPress 4.1, you shouldn't have any issues due to shared term splitting.", 'wp-find-shared-terms' ) . '</p>';
 			echo '</div>';
 			return;
 		}
 
 		// Otherwise, let's show all the shared terms and which taxonomies they are in.
-		printf( wp_kses_post( '<p>' . __( "There are <strong>%d</strong> shared terms in your database. If you are running any plugins or themes that store term IDs you may be affected by <a href=\"%s\">shared term splitting</a> in WordPress 4.2+.", 'wp-find-shared-terms' ) . '</p>' ), intval( $count_of_shared_terms ), 'https://make.wordpress.org/core/2015/02/16/taxonomy-term-splitting-in-4-2-a-developer-guide/' );
+		$single       = "There is <strong>1</strong> shared term in your database.";
+		$plural       = "There are <strong>%d</strong> shared terms in your database.";
+		$shared_terms = intval( $count_of_shared_terms );
+
+		$output  = '<p>';
+
+		$output .= sprintf( _n( $single, $plural, $shared_terms, 'wp-find-shared-terms' ), $shared_terms );
+		$output .= sprintf( __( "If you are running any plugins or themes that store term IDs, you may be affected by <a href=\"%s\">shared term splitting</a> in WordPress 4.2+.", 'wp-find-shared-terms' ), 'https://make.wordpress.org/core/2015/02/16/taxonomy-term-splitting-in-4-2-a-developer-guide/' );
+		
+		$output .= '</p>'; 
+		
 
 		// Get shared terms, names taxonomies and the count of posts that have that term
 		$sql = "SELECT tt1.term_taxonomy_id, tt1.term_id, t.name, tt1.taxonomy, tt1.count FROM wp_term_taxonomy tt1
@@ -95,11 +105,11 @@ function wpfst_show_terms_page() {
 		<table class="widefat">
 		<thead>
 			<tr>
-				<th><?php echo esc_html( __( 'Term Taxonomy ID', 'wp-find-shared-terms' ) ); ?></th>
-				<th><?php echo esc_html( __( 'Term ID', 'wp-find-shared-terms' ) ); ?></th>
-				<th><?php echo esc_html( __( 'Name', 'wp-find-shared-terms' ) ); ?></th>
-				<th><?php echo esc_html( __( 'Taxonomy', 'wp-find-shared-terms' ) ); ?></th>
-				<th><?php echo esc_html( __( '# of posts', 'wp-find-shared-terms' ) ); ?></th>
+				<th><?php esc_html_e( 'Term Taxonomy ID', 'wp-find-shared-terms' ); ?></th>
+				<th><?php esc_html_e( 'Term ID', 'wp-find-shared-terms' ); ?></th>
+				<th><?php esc_html_e( 'Name', 'wp-find-shared-terms' ); ?></th>
+				<th><?php esc_html_e( 'Taxonomy', 'wp-find-shared-terms' ); ?></th>
+				<th><?php esc_html_e( '# of posts', 'wp-find-shared-terms' ); ?></th>
 			</tr>
 		</thead>
 		<tbody>
