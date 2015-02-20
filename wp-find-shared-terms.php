@@ -69,7 +69,8 @@ function wpfst_show_terms_page() {
 		global $wpdb;
 
 		// Get a count of any shared terms
-		$sql = "SELECT COUNT( DISTINCT tt1.term_id ) FROM wp_term_taxonomy tt1 WHERE (SELECT COUNT(*) FROM wp_term_taxonomy tt2 WHERE tt1.term_id = tt2.term_id) > 1;";
+
+		$sql = "SELECT COUNT( DISTINCT tt1.term_id ) FROM {$wpdb->term_taxonomy} tt1 WHERE (SELECT COUNT(*) FROM {$wpdb->term_taxonomy} tt2 WHERE tt1.term_id = tt2.term_id) > 1;";
 		$count_of_shared_terms = $wpdb->get_var( $sql );
 
 		// If no shared terms, show a message that you are safe from the horror of shared term splitting
@@ -93,9 +94,9 @@ function wpfst_show_terms_page() {
 
 
 		// Get shared terms, names taxonomies and the count of posts that have that term
-		$sql = "SELECT tt1.term_taxonomy_id, tt1.term_id, t.name, tt1.taxonomy, tt1.count FROM wp_term_taxonomy tt1
-				INNER JOIN wp_terms t ON t.term_id = tt1.term_id
-				WHERE (SELECT COUNT(*) FROM wp_term_taxonomy tt2 WHERE tt1.term_id = tt2.term_id) > 1
+		$sql = "SELECT tt1.term_taxonomy_id, tt1.term_id, t.name, tt1.taxonomy, tt1.count FROM {$wpdb->term_taxonomy} tt1
+				INNER JOIN {$wpdb->terms} t ON t.term_id = tt1.term_id
+				WHERE (SELECT COUNT(*) FROM {$wpdb->term_taxonomy} tt2 WHERE tt1.term_id = tt2.term_id) > 1
 				ORDER BY tt1.term_id;";
 
 		$shared_terms = $wpdb->get_results( $sql );
