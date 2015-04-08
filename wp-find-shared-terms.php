@@ -125,7 +125,7 @@ function wpfst_show_terms_page() {
 			}
 
 			// get the term edit link
-			$edit_link  = get_edit_term_link( $shared_term->term_taxonomy_id, $shared_term->taxonomy );
+			$edit_link  = get_edit_term_link( $shared_term->term_id, $shared_term->taxonomy );
 			?>
 			<tr>
 				<td><?php echo esc_html( $shared_term->term_taxonomy_id ); ?></td>
