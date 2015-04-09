@@ -73,13 +73,14 @@ function wpfst_show_terms_page() {
 			FROM {$wpdb->term_taxonomy} tt2
 			WHERE tt1.term_id = tt2.term_id
 		) > 1;";
+	$count_of_shared_terms = (int) $wpdb->get_var( $sql );
 	?>
 	<div class="wrap">
 		<h2><?php echo esc_html( get_admin_page_title() ); ?></h2>
-		<?php if ( 1 > (int) $wpdb->get_var( $sql ) ) : ?>
+		<?php if ( 1 > $count_of_shared_terms ) : ?>
 			<p><?php _e( "You have no shared terms. If you're already on WordPress 4.1, you shouldn't have any issues due to shared term splitting.", 'wp-find-shared-terms' ); ?></p>
 		<?php else : ?>
-			<?php wpfst_show_terms_page_table(); ?>
+			<?php wpfst_show_terms_page_table( $count_of_shared_terms ); ?>
 		<?php endif; ?>
 	</div>
 	<?php
@@ -89,9 +90,10 @@ function wpfst_show_terms_page() {
  * Render admin page table
  *
  * @since 0.1.0
+ * @param int $count_of_shared_terms The number of disctinct shared terms
  * @return void
  */
-function wpfst_show_terms_page_table() {
+function wpfst_show_terms_page_table( $count_of_shared_terms ) {
 	/** @var wpdb $wpdb */
 	global $wpdb;
 
@@ -107,6 +109,10 @@ function wpfst_show_terms_page_table() {
 		) > 1
 		ORDER BY tt1.term_id;";
 	?>
+	<p>
+		<?php printf( _n( "There is <strong>1</strong> shared term in your database.", "There are <strong>%d</strong> shared terms in your database.", $count_of_shared_terms, 'wp-find-shared-terms' ), $count_of_shared_terms ); ?>
+		<?php printf( _x( "If you are running any plugins or themes that store term IDs, you may be affected by <a href=\"%s\">shared term splitting</a> in WordPress 4.2+.", '%s=URL of according post on make.wordpress.org', 'wp-find-shared-terms' ), 'https://make.wordpress.org/core/2015/02/16/taxonomy-term-splitting-in-4-2-a-developer-guide/' ); ?>
+	</p>
 	<table class="widefat">
 		<thead>
 		<tr>
