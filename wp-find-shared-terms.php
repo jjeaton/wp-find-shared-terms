@@ -45,8 +45,7 @@ add_action( 'admin_menu', 'wpfst_add_admin_page' );
  * @return void
  */
 function wpfst_add_admin_page() {
-	add_submenu_page(
-		'tools.php',
+	add_management_page(
 		__( 'Shared Terms', 'wp-find-shared-terms' ),
 		__( 'Find Shared Terms', 'wp-find-shared-terms' ),
 		'manage_options',
@@ -62,60 +61,65 @@ function wpfst_add_admin_page() {
  * @return void
  */
 function wpfst_show_terms_page() {
+	/** @var wpdb $wpdb */
+	global $wpdb;
+
+	// Get a count of any shared terms
+	$sql = "
+		SELECT COUNT(DISTINCT tt1.term_id)
+		FROM {$wpdb->term_taxonomy} tt1
+		WHERE (
+			SELECT COUNT(*)
+			FROM {$wpdb->term_taxonomy} tt2
+			WHERE tt1.term_id = tt2.term_id
+		) > 1;";
 	?>
 	<div class="wrap">
 		<h2><?php echo esc_html( get_admin_page_title() ); ?></h2>
-		<?php
-		global $wpdb;
+		<?php if ( 1 > (int) $wpdb->get_var( $sql ) ) : ?>
+			<p><?php _e( "You have no shared terms. If you're already on WordPress 4.1, you shouldn't have any issues due to shared term splitting.", 'wp-find-shared-terms' ); ?></p>
+		<?php else : ?>
+			<?php wpfst_show_terms_page_table(); ?>
+		<?php endif; ?>
+	</div>
+	<?php
+}
 
-		// Get a count of any shared terms
+/**
+ * Render admin page table
+ *
+ * @since 0.1.0
+ * @return void
+ */
+function wpfst_show_terms_page_table() {
+	/** @var wpdb $wpdb */
+	global $wpdb;
 
-		$sql = "SELECT COUNT( DISTINCT tt1.term_id ) FROM {$wpdb->term_taxonomy} tt1 WHERE (SELECT COUNT(*) FROM {$wpdb->term_taxonomy} tt2 WHERE tt1.term_id = tt2.term_id) > 1;";
-		$count_of_shared_terms = $wpdb->get_var( $sql );
-
-		// If no shared terms, show a message that you are safe from the horror of shared term splitting
-		if ( 0 === (int) $count_of_shared_terms ) {
-			echo '<p>' . __( "You have no shared terms. If you're already on WordPress 4.1, you shouldn't have any issues due to shared term splitting.", 'wp-find-shared-terms' ) . '</p>';
-			echo '</div>';
-			return;
-		}
-
-		// Otherwise, let's show all the shared terms and which taxonomies they are in.
-		$single       = "There is <strong>1</strong> shared term in your database.";
-		$plural       = "There are <strong>%d</strong> shared terms in your database.";
-		$shared_terms = intval( $count_of_shared_terms );
-
-		$output  = '<p>';
-
-		$output .= sprintf( _n( $single, $plural, $shared_terms, 'wp-find-shared-terms' ), $shared_terms );
-		$output .= sprintf( __( "If you are running any plugins or themes that store term IDs, you may be affected by <a href=\"%s\">shared term splitting</a> in WordPress 4.2+.", 'wp-find-shared-terms' ), 'https://make.wordpress.org/core/2015/02/16/taxonomy-term-splitting-in-4-2-a-developer-guide/' );
-
-		$output .= '</p>';
-
-
-		// Get shared terms, names taxonomies and the count of posts that have that term
-		$sql = "SELECT tt1.term_taxonomy_id, tt1.term_id, t.name, tt1.taxonomy, tt1.count FROM {$wpdb->term_taxonomy} tt1
-				INNER JOIN {$wpdb->terms} t ON t.term_id = tt1.term_id
-				WHERE (SELECT COUNT(*) FROM {$wpdb->term_taxonomy} tt2 WHERE tt1.term_id = tt2.term_id) > 1
-				ORDER BY tt1.term_id;";
-
-		$shared_terms = $wpdb->get_results( $sql );
-
-		// Print out a table of the results
-		?>
-		<table class="widefat">
+	// Get shared terms, names, taxonomies and the count of posts that have that term
+	$sql = "
+		SELECT tt1.term_taxonomy_id, tt1.term_id, t.name, tt1.taxonomy, tt1.count
+		FROM {$wpdb->term_taxonomy} tt1
+		INNER JOIN {$wpdb->terms} t ON t.term_id = tt1.term_id
+		WHERE (
+			SELECT COUNT(*)
+			FROM {$wpdb->term_taxonomy} tt2
+			WHERE tt1.term_id = tt2.term_id
+		) > 1
+		ORDER BY tt1.term_id;";
+	?>
+	<table class="widefat">
 		<thead>
-			<tr>
-				<th><?php esc_html_e( 'Term Taxonomy ID', 'wp-find-shared-terms' ); ?></th>
-				<th><?php esc_html_e( 'Term ID', 'wp-find-shared-terms' ); ?></th>
-				<th><?php esc_html_e( 'Name', 'wp-find-shared-terms' ); ?></th>
-				<th><?php esc_html_e( 'Taxonomy', 'wp-find-shared-terms' ); ?></th>
-				<th><?php esc_html_e( '# of posts', 'wp-find-shared-terms' ); ?></th>
-			</tr>
+		<tr>
+			<th><?php esc_html_e( 'Term Taxonomy ID', 'wp-find-shared-terms' ); ?></th>
+			<th><?php esc_html_e( 'Term ID', 'wp-find-shared-terms' ); ?></th>
+			<th><?php esc_html_e( 'Name', 'wp-find-shared-terms' ); ?></th>
+			<th><?php esc_html_e( 'Taxonomy', 'wp-find-shared-terms' ); ?></th>
+			<th><?php esc_html_e( '# of Posts', 'wp-find-shared-terms' ); ?></th>
+		</tr>
 		</thead>
 		<tbody>
 		<?php
-		foreach ( $shared_terms as $shared_term ) {
+		foreach ( $wpdb->get_results( $sql ) as $shared_term ) {
 			// Get the nice taxonomy label if it exists. It's possible you have old terms from taxonomies that are no longer active
 			$taxonomy = get_taxonomy( $shared_term->taxonomy );
 			if ( $taxonomy ) {
@@ -124,20 +128,20 @@ function wpfst_show_terms_page() {
 				$taxonomy_name = $shared_term->taxonomy;
 			}
 
-			// get the term edit link
-			$edit_link  = get_edit_term_link( $shared_term->term_id, $shared_term->taxonomy );
+			// Get the term edit link
+			$edit_link = get_edit_term_link( $shared_term->term_id, $shared_term->taxonomy );
 			?>
 			<tr>
 				<td><?php echo esc_html( $shared_term->term_taxonomy_id ); ?></td>
 				<td><?php echo esc_html( $shared_term->term_id ); ?></td>
 				<td><a href="<?php echo esc_url( $edit_link ); ?>" title="<?php esc_html_e( 'Edit Term', 'wp-find-shared-terms' ); ?>"><?php echo esc_html( $shared_term->name ); ?></a></td>
-				<td><?php echo '<abbr title="' . esc_attr( $shared_term->taxonomy ) . '">' . esc_html( $taxonomy_name ) . '</abbr>'; ?></td>
+				<td><abbr title="<?php echo esc_attr( $shared_term->taxonomy ); ?>"><?php echo esc_html( $taxonomy_name ); ?></abbr></td>
 				<td><?php echo esc_html( $shared_term->count ); ?></td>
 			</tr>
 			<?php
 		}
 		?>
-		</table>
-	</div>
+		</tbody>
+	</table>
 	<?php
 }
