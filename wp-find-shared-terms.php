@@ -90,7 +90,7 @@ function wpfst_show_terms_page() {
  * Render admin page table
  *
  * @since 0.1.0
- * @param int $count_of_shared_terms The number of disctinct shared terms
+ * @param int $count_of_shared_terms The number of distinct shared terms
  * @return void
  */
 function wpfst_show_terms_page_table( $count_of_shared_terms ) {
