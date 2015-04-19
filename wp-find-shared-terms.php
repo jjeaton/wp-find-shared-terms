@@ -37,6 +37,10 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
+if ( defined( 'WP_CLI' ) && WP_CLI ) {
+	require_once( dirname( __FILE__ ) . '/cli.php' );
+}
+
 add_action( 'admin_menu', 'wpfst_add_admin_page' );
 /**
  * Add admin page
