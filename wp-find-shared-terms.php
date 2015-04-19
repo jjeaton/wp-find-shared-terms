@@ -106,7 +106,7 @@ function wpfst_show_terms_page_table( $count_of_shared_terms ) {
 		foreach ( wpfst_get_shared_terms() as $shared_term ) {
 			// Get the nice taxonomy label if it exists. It's possible you have old terms from taxonomies that are no longer active
 			$taxonomy = get_taxonomy( $shared_term->taxonomy );
-			if ( $taxonomy ) {
+			if ( $taxonomy && ! empty( $taxonomy->labels->name ) ) {
 				$taxonomy_name = $taxonomy->labels->name;
 			} else {
 				$taxonomy_name = $shared_term->taxonomy;
