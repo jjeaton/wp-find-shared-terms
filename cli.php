@@ -52,6 +52,10 @@ class Shared_Terms_CLI_Command extends WP_CLI_Command {
 			WP_CLI::warning( 'THIS IS A DRY RUN' );
 		}
 
+		if ( ! function_exists( '_split_shared_term' ) ) {
+			WP_CLI::error( 'WordPress must be version 4.2 or higher to split terms' );
+		}
+
 		$terms = wpfst_get_shared_terms();
 		if ( empty( $terms ) ) {
 			WP_CLI::error( "There are no terms to split!" );
