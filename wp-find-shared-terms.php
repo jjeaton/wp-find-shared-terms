@@ -37,6 +37,10 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
+if ( defined( 'WP_CLI' ) && WP_CLI ) {
+	require_once( dirname( __FILE__ ) . '/cli.php' );
+}
+
 add_action( 'admin_menu', 'wpfst_add_admin_page' );
 /**
  * Add admin page
@@ -61,19 +65,7 @@ function wpfst_add_admin_page() {
  * @return void
  */
 function wpfst_show_terms_page() {
-	/** @var wpdb $wpdb */
-	global $wpdb;
-
-	// Get a count of any shared terms
-	$sql = "
-		SELECT COUNT(DISTINCT tt1.term_id)
-		FROM {$wpdb->term_taxonomy} tt1
-		WHERE (
-			SELECT COUNT(*)
-			FROM {$wpdb->term_taxonomy} tt2
-			WHERE tt1.term_id = tt2.term_id
-		) > 1;";
-	$count_of_shared_terms = (int) $wpdb->get_var( $sql );
+	$count_of_shared_terms = count( wpfst_get_shared_terms() );
 	?>
 	<div class="wrap">
 		<h2><?php echo esc_html( get_admin_page_title() ); ?></h2>
@@ -94,20 +86,6 @@ function wpfst_show_terms_page() {
  * @return void
  */
 function wpfst_show_terms_page_table( $count_of_shared_terms ) {
-	/** @var wpdb $wpdb */
-	global $wpdb;
-
-	// Get shared terms, names, taxonomies and the count of posts that have that term
-	$sql = "
-		SELECT tt1.term_taxonomy_id, tt1.term_id, t.name, tt1.taxonomy, tt1.count
-		FROM {$wpdb->term_taxonomy} tt1
-		INNER JOIN {$wpdb->terms} t ON t.term_id = tt1.term_id
-		WHERE (
-			SELECT COUNT(*)
-			FROM {$wpdb->term_taxonomy} tt2
-			WHERE tt1.term_id = tt2.term_id
-		) > 1
-		ORDER BY tt1.term_id;";
 	?>
 	<p>
 		<?php printf( _n( "There is <strong>1</strong> shared term in your database.", "There are <strong>%d</strong> shared terms in your database.", $count_of_shared_terms, 'wp-find-shared-terms' ), $count_of_shared_terms ); ?>
@@ -125,10 +103,10 @@ function wpfst_show_terms_page_table( $count_of_shared_terms ) {
 		</thead>
 		<tbody>
 		<?php
-		foreach ( $wpdb->get_results( $sql ) as $shared_term ) {
+		foreach ( wpfst_get_shared_terms() as $shared_term ) {
 			// Get the nice taxonomy label if it exists. It's possible you have old terms from taxonomies that are no longer active
 			$taxonomy = get_taxonomy( $shared_term->taxonomy );
-			if ( $taxonomy ) {
+			if ( $taxonomy && ! empty( $taxonomy->labels->name ) ) {
 				$taxonomy_name = $taxonomy->labels->name;
 			} else {
 				$taxonomy_name = $shared_term->taxonomy;
@@ -150,4 +128,30 @@ function wpfst_show_terms_page_table( $count_of_shared_terms ) {
 		</tbody>
 	</table>
 	<?php
+}
+
+/**
+ * Get a list of all shared terms.
+ *
+ * @return array stdClass objects, with term_taxonomy_id, term_id, name,
+ *               taxonomy, and count properties.
+ */
+function wpfst_get_shared_terms( $force = false ) {
+	static $terms;
+	if ( ! $force && isset( $terms ) ) {
+		return $terms;
+	}
+
+	global $wpdb;
+	$terms = array();
+	$term_ids = $wpdb->get_col( "SELECT `term_id` FROM {$wpdb->term_taxonomy} GROUP BY `term_id` HAVING COUNT(*) > 1" );
+	if ( ! empty( $term_ids ) ) {
+		$terms = $wpdb->get_results(
+			"SELECT tt.term_taxonomy_id, tt.term_id, t.name, tt.taxonomy, tt.count
+			FROM {$wpdb->term_taxonomy} AS tt
+			INNER JOIN {$wpdb->terms} AS t ON tt.term_id=t.term_id
+			WHERE tt.term_id IN (" . implode( ',', $term_ids ) . ')'
+		);
+	}
+	return $terms;
 }
