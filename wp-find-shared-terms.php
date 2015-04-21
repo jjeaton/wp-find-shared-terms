@@ -142,6 +142,7 @@ function wpfst_get_shared_terms( $force = false ) {
 		return $terms;
 	}
 
+	/** @var wpdb $wpdb */
 	global $wpdb;
 	$terms = array();
 	$term_ids = $wpdb->get_col( "SELECT `term_id` FROM {$wpdb->term_taxonomy} GROUP BY `term_id` HAVING COUNT(*) > 1" );
