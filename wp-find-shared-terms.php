@@ -133,6 +133,7 @@ function wpfst_show_terms_page_table( $count_of_shared_terms ) {
 /**
  * Get a list of all shared terms.
  *
+ * @since 0.1.1
  * @return array stdClass objects, with term_taxonomy_id, term_id, name,
  *               taxonomy, and count properties.
  */

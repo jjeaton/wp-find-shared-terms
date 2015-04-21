@@ -2,6 +2,9 @@
 
 WP_CLI::add_command( 'shared-terms', 'Shared_Terms_CLI_Command' );
 
+/**
+ * List and split shared taxonomy terms.
+ */
 class Shared_Terms_CLI_Command extends WP_CLI_Command {
 
 	/**
