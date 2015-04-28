@@ -65,12 +65,15 @@ function wpfst_add_admin_page() {
  * @return void
  */
 function wpfst_show_terms_page() {
-	$count_of_shared_terms = count( wpfst_get_shared_terms() );
 	?>
 	<div class="wrap">
 		<h2><?php echo esc_html( get_admin_page_title() ); ?></h2>
-		<?php if ( 1 > $count_of_shared_terms ) : ?>
-			<p><?php _e( "You have no shared terms. If you're already on WordPress 4.1, you shouldn't have any issues due to shared term splitting.", 'wp-find-shared-terms' ); ?></p>
+		<?php
+		wpfst_process_form();
+
+		$count_of_shared_terms = count( wpfst_get_shared_terms( true ) );
+		if ( 1 > $count_of_shared_terms ) : ?>
+			<p><?php _e( "You have no shared terms. If you're already on WordPress 4.1+, you shouldn't have any issues due to shared term splitting.", 'wp-find-shared-terms' ); ?></p>
 		<?php else : ?>
 			<?php wpfst_show_terms_page_table( $count_of_shared_terms ); ?>
 		<?php endif; ?>
@@ -134,7 +137,16 @@ function wpfst_show_terms_page_table( $count_of_shared_terms ) {
 		?>
 		</tbody>
 	</table>
-	<?php
+	<?php if ( function_exists( '_split_shared_term' ) ) { ?>
+		<form method="post">
+			<p class="description"><?php _e( "If you'd like to split your shared terms all at once, instead of waiting for them to be split when a term is updated, you can do so by clicking the button below. <strong>Only do this if you know what this means and you have already updated your code accordingly</strong>, otherwise leave it alone.", 'wp-find-shared-terms' ); ?></p>
+			<p><input type="submit" class="button secondary" name="wpfst_submit" value="<?php esc_attr_e( 'Split Shared Terms', 'wp-find-shared-terms' ); ?>"></p>
+			<p><label for="wpfst-dry-run"><input type="checkbox" name="wpfst_dry_run" id="wpfst-dry-run" value="1"> Dry Run</label></p>
+			<p><label for="wpfst-verbose"><input type="checkbox" name="wpfst_verbose" id="wpfst-verbose" value="1"> Verbose</label></p>
+			<?php wp_nonce_field( 'wpfst-split-terms', 'wpfst_nonce' ); ?>
+			<p><?php _e( 'There are also WP-CLI commands: <code>wp shared-terms list</code> and <code>wp shared-terms split</code>. Use these if you have a very large number of shared terms.', 'wp-find-shared-terms' ); ?></p>
+		</form>
+	<?php }
 }
 
 /**
@@ -163,4 +175,143 @@ function wpfst_get_shared_terms( $force = false ) {
 		);
 	}
 	return $terms;
+}
+
+/**
+ * Split all shared taxonomy terms.
+ *
+ * @since 0.1.2
+ * @param  array  $terms    List of shared term objects
+ * @param  string  $context 'admin' or 'cli'
+ * @param  boolean $dry_run Run the function without actually splitting
+ * @param  boolean $verbose show more output
+ * @return void
+ */
+function wpfst_split_shared_terms( $terms, $context = 'admin', $dry_run = false, $verbose = true ) {
+	if ( 'admin' === $context ) {
+		$indent = $verbose ? "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;" : '';
+	} else {
+		$indent = $verbose ? "   " : '';
+	}
+
+	wpfst_print_line( "Splitting all shared terms", 'line', $context );
+	if ( $dry_run ) {
+		wpfst_print_line( 'THIS IS A DRY RUN', 'warning', $context );
+	}
+
+	if ( ! function_exists( '_split_shared_term' ) ) {
+		wpfst_print_line( 'WordPress must be version 4.2 or higher to split terms', 'error', $context );
+	}
+
+	$processed = $split = $skipped = $errors = 0;
+	foreach ( $terms as $term ) {
+		$processed++;
+		if ( $verbose ) {
+			wpfst_print_line( "Splitting {$term->taxonomy} \"{$term->name}\"", 'line', $context );
+		}
+		if ( $dry_run ) {
+			wpfst_print_line( $indent . "_split_shared_term( {$term->term_id}, {$term->term_taxonomy_id} );", 'line', $context );
+		} else {
+			$new_term_id = _split_shared_term( $term->term_id, $term->term_taxonomy_id );
+			if ( ! is_wp_error( $new_term_id ) ) {
+				if ( $new_term_id == $term->term_id ) {
+					$skipped++;
+					if ( $verbose ) {
+						wpfst_print_line( $indent . "Term Taxonomy ID {$term->term_taxonomy_id} did not need splitting", 'line', $context );
+					}
+				} else {
+					$split++;
+					if ( $verbose ) {
+						wpfst_print_line( $indent . "Term Taxonomy ID {$term->term_taxonomy_id} was split from {$term->term_id} -> {$new_term_id}", 'line', $context );
+					}
+				}
+			} else {
+				$errors++;
+				wpfst_print_line( $indent . "ERROR: Term Taxonomy ID {$term->term_taxonomy_id} could not be split!", 'warning', $context );
+			}
+		}
+	}
+
+	// Print a success message
+	wpfst_print_line( "Process complete!", 'success', $context );
+	wpfst_print_line( "Processed:  {$processed}", 'line', $context );
+	wpfst_print_line( "Split:      {$split}", 'line', $context );
+	wpfst_print_line( "Skipped:    {$skipped}", 'line', $context );
+	wpfst_print_line( "Errors:     {$errors}", 'line', $context );
+}
+
+/**
+ * Print out a message depending on the context and type.
+ *
+ * @since 0.1.2
+ * @param  string $message Message to print
+ * @param  string $type    Type of message to format: 'line', 'error', 'warning', 'success'
+ * @param  string $context Either 'admin' or 'cli'
+ *
+ * @return void
+ */
+function wpfst_print_line( $message, $type = 'line', $context = 'admin' ) {
+	switch ( $type ) {
+		case 'line':
+			if ( 'admin' === $context ) {
+				echo '<li>' . esc_html( $message ) . '</li>';
+			} else {
+				WP_CLI::line( $message );
+			}
+			break;
+		case 'error':
+			if ( 'admin' === $context ) {
+				echo '<li><span style="color:#FF0000;">' . esc_html( $message ) . '</span></li>';
+			} else {
+				WP_CLI::error( $message );
+			}
+			break;
+		case 'warning':
+			if ( 'admin' === $context ) {
+				echo '<li><span style="color:#FF0000;">' . esc_html( $message ) . '</span></li>';
+			} else {
+				WP_CLI::warning( $message );
+			}
+			break;
+		case 'success':
+			if ( 'admin' === $context ) {
+				echo '<li><span style="color:#088A08;">' . esc_html( $message ) . '</span></li>';
+			} else {
+				WP_CLI::success( $message );
+			}
+			break;
+
+		default:
+			if ( 'admin' === $context ) {
+				echo '<li>' . esc_html( $message ) . '</li>';
+			} else {
+				WP_CLI::line( $message );
+			}
+			break;
+	}
+}
+
+/**
+ * Process the shared term splitting form.
+ *
+ * @since 0.1.2
+ * @return void
+ */
+function wpfst_process_form() {
+	if ( ! empty( $_POST['wpfst_submit'] ) ) {
+
+		if ( check_admin_referer( 'wpfst-split-terms', 'wpfst_nonce' ) ) {
+			$terms = wpfst_get_shared_terms();
+			echo '<ul>';
+				if ( empty( $terms ) ) {
+					wpfst_print_line( "There are no terms to split!", 'error', 'admin' );
+				} else {
+					$dry_run = isset( $_POST['wpfst_dry_run'] ) && '1' === $_POST['wpfst_dry_run'] ? true : false;
+					$verbose = isset( $_POST['wpfst_verbose'] ) && '1' === $_POST['wpfst_verbose'] ? true : false;
+
+					wpfst_split_shared_terms( $terms, 'admin', $dry_run, $verbose );
+				}
+			echo '</ul>';
+		}
+	}
 }
