@@ -1,13 +1,13 @@
 <?php
 /**
- * @since             0.1.0
+ * @since             0.1.2
  * @package           WPFindSharedTerms
  *
  * @wordpress-plugin
  * Plugin Name: Find Shared Terms
  * Plugin URI: http://www.josheaton.org/
  * Description: Find shared terms in your WP install that may be split in WordPress 4.2+
- * Version: 0.1.0
+ * Version: 0.1.2
  * Author: Josh Eaton
  * Author URI: http://www.josheaton.org/
  * License: GPL-2.0+
