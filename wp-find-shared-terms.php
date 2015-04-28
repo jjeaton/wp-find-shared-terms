@@ -106,19 +106,26 @@ function wpfst_show_terms_page_table( $count_of_shared_terms ) {
 		foreach ( wpfst_get_shared_terms() as $shared_term ) {
 			// Get the nice taxonomy label if it exists. It's possible you have old terms from taxonomies that are no longer active
 			$taxonomy = get_taxonomy( $shared_term->taxonomy );
+			$edit_link = '';
 			if ( $taxonomy && ! empty( $taxonomy->labels->name ) ) {
 				$taxonomy_name = $taxonomy->labels->name;
+				// Get the term edit link
+				$edit_link = get_edit_term_link( $shared_term->term_id, $shared_term->taxonomy );
 			} else {
 				$taxonomy_name = $shared_term->taxonomy;
 			}
 
-			// Get the term edit link
-			$edit_link = get_edit_term_link( $shared_term->term_id, $shared_term->taxonomy );
 			?>
 			<tr>
 				<td><?php echo esc_html( $shared_term->term_taxonomy_id ); ?></td>
 				<td><?php echo esc_html( $shared_term->term_id ); ?></td>
-				<td><a href="<?php echo esc_url( $edit_link ); ?>" title="<?php esc_html_e( 'Edit Term', 'wp-find-shared-terms' ); ?>"><?php echo esc_html( $shared_term->name ); ?></a></td>
+				<td>
+					<?php if ( $edit_link ) { ?>
+						<a href="<?php echo esc_url( $edit_link ); ?>" title="<?php esc_html_e( 'Edit Term', 'wp-find-shared-terms' ); ?>"><?php echo esc_html( $shared_term->name ); ?></a>
+					<?php } else { ?>
+						<?php echo esc_html( $shared_term->name ); ?>
+					<?php } ?>
+				</td>
 				<td><abbr title="<?php echo esc_attr( $shared_term->taxonomy ); ?>"><?php echo esc_html( $taxonomy_name ); ?></abbr></td>
 				<td><?php echo esc_html( $shared_term->count ); ?></td>
 			</tr>
